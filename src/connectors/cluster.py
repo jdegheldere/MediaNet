@@ -447,16 +447,16 @@ if __name__ == "__main__":
     print("Scraping des flux RSS...")
     new_articles = engine.scrape_rss_feeds()
     print(f"✓ {new_articles} nouveaux articles ajoutés")
-    
-
     """
+
+    
     # Exemple 3 : Recherche d'articles similaires
-    query = """
-    L'Union européenne approuve un premier traitement qui ralentit la progression du diabète de type 1
+    query ="""
+    Iran : l’ayatollah Ali Khamenei compare Donald Trump aux « tyrans et aux arrogants de ce monde » et affirme qu’il « sera renversé »
     """
     
     print("\nRecherche d'articles similaires...")
-    similar = engine.find_similar_articles(query, top_k=10, similarity_threshold=0.4)
+    similar = engine.find_similar_articles(query, top_k=50, similarity_threshold=0.6)
     
     print(f"\nTrouvé {len(similar)} articles similaires :\n")
     for article in similar:
