@@ -1,0 +1,8 @@
+<!-- Atlas des flux RSS/ATOM - territoire Bretagne agrégée - langue française- par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+https://www.bing.com/news/search?q=bretagne&qft=sortbydate%3d%221%22+interval%3d%227%22&form=YFNR&format=rss&mkt=fr-fr&setlang=fr
+https://flipboard.com/topic/fr-bretagne.rss
+https://news.google.com/rss/search?tbm=nws&q=when:24h+bretagne&oq=bretagne&scoring=n&hl=fr&gl=FR&ceid=FR:fr

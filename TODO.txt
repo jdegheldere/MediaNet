@@ -1,0 +1,13 @@
+[] Lire le code
+[] Connecter tous les scripts ensemble
+[] Coder un main.py sans API, juste on exécute avec des settings courants, aps des arguments de requête API
+[] Tester le clustering, construction de bdd, voir ce que ça bouffe comme ressources
+[] Enlever le parsing de corps de texte / firewall, etc.
+
+Le coeur de code doit juste récupérer des requêtes (API), et dispatcher les infos aux bons sous-briques. Donc on tej le bypass paywall, le scraping de texte, machine machin truc
+fonctionnalités finales
+[*] Articles similaires (clustering sémantique)
+[] Cartographie réseau presse et propriété (Construction d'une BDD des médias et propriétaires)
+[] Analyse d'orientation politique/ton (niveau média) (PAS POUR L'INSTANT)
+[] Fact checking (niveau média) Media Bias/Fact Check, Ad Fontes Media, ou le Reuters Institute Digital News Report
+[] Retourner toutes ces données dans un format parsable par un enfant de 6 ans

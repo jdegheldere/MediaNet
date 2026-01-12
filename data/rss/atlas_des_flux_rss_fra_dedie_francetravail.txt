@@ -1,0 +1,26 @@
+<!-- Atlas des flux RSS/ATOM - économie - France Travail - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+https://bsky.app/profile/did:plc:a7w2g7z3a5i2ym6m6iq5x6kr/rss
+https://bsky.app/profile/did:plc:a7w2g7z3a5i2ym6m6iq5x6kr/rss
+https://flipboard.com/topic/fr-francetravail.rss
+https://www.francetravail.org/accueil/fluxRss/peorgfluxrss.flux.rss
+https://fetchrss.com/feed/1iIaFxGYM4cZ1rNtXp8PWCNW.rss
+https://fetchrss.com/feed/1iIaFxGYM4cZ1rNtZZ5D42Bo.rss
+https://fetchrss.com/feed/1iIaFxGYM4cZ1uBUTX7cG2Dq.rss
+https://fetchrss.com/feed/1iIaFxGYM4cZ1rNtWv6s81op.rss
+https://rss-bridge.org/bridge01/?action=display&bridge=InstagramBridge&context=Username&u=ftravail.corse&media_type=all&format=Mrss
+https://www.youtube.com/feeds/videos.xml?playlist_id=PLqvVw037WdRWTu96_Ws0RAReT9wehsdor
+https://fetchrss.com/feed/1iIaFxGYM4cZ1rNtbPFKlAfS.rss
+https://www.youtube.com/feeds/videos.xml?channel_id=UC4iU1Dig7nqlzoVQ8foPK8g
+https://rss-bridge.org/bridge01/?action=display&bridge=InstagramBridge&context=Username&u=francetravail&media_type=all&format=Mrss
+https://fetchrss.com/feed/1iIaFxGYM4cZ1rNtd93KpF1A.rss
+https://fetchrss.com/feed/1iIaFxGYM4cZ1rNtf2AwY1R5.rss
+https://recrute.francetravail.org/handlers/offerRss.ashx?LCID=1036
+https://www.youtube.com/feeds/videos.xml?channel_id=UCIV-NTLRUBzAY404qiQ1OYw
+https://news.google.com/rss/search?tbm=nws&q=France%20Travail&oq=France%20Travail&scoring=n&hl=fr&gl=FR&ceid=FR:fr
+https://www.humanite.fr/mot-cle/france-travail/feed
+https://www.macommune.info/tags/france-travail/feed/
+https://www.snap-francetravail.fr/feed/

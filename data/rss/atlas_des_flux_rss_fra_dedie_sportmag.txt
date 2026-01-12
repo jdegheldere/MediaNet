@@ -1,0 +1,44 @@
+<!-- Atlas des flux RSS/ATOM - SportMag - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+https://www.sportmag.fr/category/ile-de-france/feed/
+https://www.sportmag.fr/feed/
+https://www.sportmag.fr/category/athle/feed/
+https://www.sportmag.fr/category/auvergne-rhone-alpes/feed/
+https://www.sportmag.fr/category/basket/feed/
+https://www.sportmag.fr/category/bourgogne-franche-comte/feed/
+https://www.sportmag.fr/category/boxe/feed/
+https://www.sportmag.fr/category/bretagne/feed/
+https://www.sportmag.fr/category/business/feed/
+https://www.sportmag.fr/category/centre-val-de-loire/feed/
+https://www.sportmag.fr/category/nouvelle-aquitaine/charente/feed/
+https://www.sportmag.fr/category/nouvelle-aquitaine/charente-maritime/feed/
+https://www.sportmag.fr/category/nouvelle-aquitaine/correze/feed/
+https://www.sportmag.fr/category/corse/feed/
+https://www.sportmag.fr/category/nouvelle-aquitaine/creuse/feed/
+https://www.sportmag.fr/category/nouvelle-aquitaine/deux-sevres/feed/
+https://www.sportmag.fr/category/formule-1/feed/
+https://www.sportmag.fr/category/grand-est/feed/
+https://www.sportmag.fr/category/gymnastique/feed/
+https://www.sportmag.fr/category/handball/feed/
+https://www.sportmag.fr/category/hauts-de-france/feed/
+https://www.sportmag.fr/category/hockey-sur-glace/feed/
+https://www.sportmag.fr/category/judo/feed/
+https://www.sportmag.fr/category/karate/feed/
+https://www.sportmag.fr/category/lutte/feed/
+https://www.sportmag.fr/category/moto/feed/
+https://www.sportmag.fr/category/multisports/feed/
+https://www.sportmag.fr/category/natation/feed/
+https://www.sportmag.fr/category/normandie/feed/
+https://www.sportmag.fr/category/occitanie/feed/
+https://www.sportmag.fr/category/dom-tom/feed/
+https://www.sportmag.fr/category/pays-de-la-loire/feed/
+https://www.sportmag.fr/category/rallye/feed/
+https://www.sportmag.fr/category/rugby/feed/
+https://www.sportmag.fr/category/running/feed/
+https://www.sportmag.fr/category/sports-mecaniques/feed/
+https://www.sportmag.fr/category/tennis/feed/
+https://www.sportmag.fr/category/volley/feed/
+https://www.youtube.com/feeds/videos.xml?channel_id=UCHVNyFEDNOq6q4OkG2YzIQQ

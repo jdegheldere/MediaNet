@@ -1,0 +1,7 @@
+<!-- Atlas des flux RSS/ATOM - rubrique super-héros agrégé - langue française et anglaise - par Saynète http://www.saynete.net - http://atlasflux.saynete.net 08_11_2025 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+http://megaverse.flux.suptribune.org/megaverse_franc_rss.xml
+http://megaverse.flux.suptribune.org/megaverse_franc_video_rss.xml

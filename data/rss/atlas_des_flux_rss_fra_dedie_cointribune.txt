@@ -1,0 +1,5 @@
+<!-- Atlas des flux RSS/ATOM - économie - Coin Tribune France - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+

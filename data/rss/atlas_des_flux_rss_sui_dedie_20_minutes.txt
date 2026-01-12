@@ -1,0 +1,42 @@
+<!-- Atlas des flux RSS/ATOM - liste 20 minutes - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+https://partner-feeds.20min.ch/rss/20minutes/economie
+https://partner-feeds.20min.ch/rss/20minutes/sports/auto-moto
+https://bsky.app/profile/did:plc:aqazdxh3qh4kmgnw36zxawne/rss
+https://partner-feeds.20min.ch/rss/20minutes/divertissements/cinema
+https://partner-feeds.20min.ch/rss/20minutes/crypto
+https://partner-feeds.20min.ch/rss/20minutes/sports/cyclisme
+https://partner-feeds.20min.ch/rss/20minutes/divertissements
+https://partner-feeds.20min.ch/rss/20minutes/faits-divers
+https://partner-feeds.20min.ch/rss/20minutes/festivals/
+https://partner-feeds.20min.ch/rss/20minutes/sports/football
+https://partner-feeds.20min.ch/rss/20minutes/hi-tech
+https://partner-feeds.20min.ch/rss/20minutes/sports/hockey
+https://partner-feeds.20min.ch/rss/20minutes/insolite
+https://partner-feeds.20min.ch/rss/20minutes/jeux-video
+https://partner-feeds.20min.ch/rss/20minutes/lifestyle
+https://bsky.app/profile/did:plc:433yfu3bbc4p3zix7t7kscpz/rss
+https://partner-feeds.20min.ch/rss/20minutes/lifestyle/living
+https://partner-feeds.20min.ch/rss/20minutes/monde
+https://www.youtube.com/feeds/videos.xml?playlist_id=PLdfgKQn5ouUdu1KUa5VB--PnB3-tQHfAQ
+https://partner-feeds.20min.ch/rss/20minutes/divertissements/musique
+https://partner-feeds.20min.ch/rss/20minutes/noussommeslefutur
+https://partner-feeds.20min.ch/rss/20minutes/science-et-nature
+https://partner-feeds.20min.ch/rss/20minutes/sports/
+https://partner-feeds.20min.ch/rss/20minutes/sports/autres
+https://partner-feeds.20min.ch/rss/20minutes/sports/sports-d-hiver
+https://partner-feeds.20min.ch/rss/20minutes/suisse
+https://partner-feeds.20min.ch/rss/20minutes/suisse-romande
+https://partner-feeds.20min.ch/rss/20minutes/suisse-romande/autres-cantons
+https://partner-feeds.20min.ch/rss/20minutes/suisse-romande/geneve
+https://partner-feeds.20min.ch/rss/20minutes/suisse-romande/vaud
+https://partner-feeds.20min.ch/rss/20minutes/sports/super-league
+https://partner-feeds.20min.ch/rss/20minutes/sports/tennis
+https://partner-feeds.20min.ch/rss/20minutes
+https://partner-feeds.20min.ch/rss/20minutes/divertissements/tv/
+https://partner-feeds.20min.ch/rss/20minutes/video/nos-videos
+https://partner-feeds.20min.ch/rss/20minutes/suisse/votations
+https://www.youtube.com/feeds/videos.xml?channel_id=UCMy7SKPTAx7Oi98zXLrPeiQ
