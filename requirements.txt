@@ -1,4 +1,4 @@
-sqlite3-python==0.0.1
+sqlite3-python
 numpy>=1.24.0
 sentence-transformers>=2.2.2
 faiss-cpu>=1.7.4
