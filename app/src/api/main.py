@@ -3,8 +3,8 @@ from pydantic import BaseModel, HttpUrl
 from typing import Optional, List, Union
 import logging
 
-from scraper.news_scraper import NewsScraper
-from processors.text_processor import TextProcessor
+#from scraper.news_scraper import NewsScraper
+#from processors.text_processor import TextProcessor
 
 # Configuration logging
 logging.basicConfig(level=logging.INFO)
