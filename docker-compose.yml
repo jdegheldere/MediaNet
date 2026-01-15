@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  mon-app:
+    build: .
+    container_name: mon-app
+    restart: unless-stopped
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    
+    env_file:
+      - .env
+    
+    volumes:
+      - ./data:/app/data
