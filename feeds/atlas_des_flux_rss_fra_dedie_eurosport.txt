@@ -1,0 +1,10 @@
+<!-- Atlas des flux RSS/ATOM - Eurosport - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+https://www.youtube.com/feeds/videos.xml?playlist_id=PLMvsN4LH5cSHe_GTPdzmk-gIj9JDwqZca
+https://www.youtube.com/feeds/videos.xml?playlist_id=PLMvsN4LH5cSFtlag_bbqDc76pyetG_4Ol
+https://www.youtube.com/feeds/videos.xml?playlist_id=PLMvsN4LH5cSEZ_i8GEqIMTtoDQnanx1PR
+https://www.youtube.com/feeds/videos.xml?playlist_id=PLMvsN4LH5cSErHLunUW_GtJTtnBDVI16W
+https://www.youtube.com/feeds/videos.xml?channel_id=UCozt5iXNqmhU1I7tcjJ0UFQ

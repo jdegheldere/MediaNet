@@ -1,0 +1,15 @@
+<!-- Atlas des flux RSS/ATOM - informatique - Silicon - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
+<meta name='robots' content='noindex'>
+<meta name='googlebot' content='noindex'>
+<meta name='robots' content='nofollow'>
+
+https://www.silicon.fr/evenement/feed
+https://www.silicon.fr/feed
+https://www.silicon.fr/thematique/business-1367/feed
+https://www.silicon.fr/thematique/cloud-1370/feed
+https://www.silicon.fr/thematique/cybersecurite-1371/feed
+https://www.silicon.fr/thematique/data-ia-1372/feed
+https://www.silicon.fr/thematique/emploi-formation-1373/feed
+https://www.silicon.fr/thematique/green-it-1374/feed
+https://www.silicon.fr/thematique/open-source-1375/feed
+https://www.silicon.fr/thematique/workspace-1376/feed

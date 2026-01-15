@@ -1,10 +1,40 @@
 #!/bin/bash
 set -e
 
+echo "🚀 Starting MediaNet update..."
+
+# Pull latest code
+echo "📥 Pulling latest code..."
 git reset --hard origin/main
 git pull origin main
-docker-compose build
+
+# Create necessary directories
+mkdir -p data feeds logs config
+
+# Build and restart containers
+echo "🔨 Rebuilding Docker images..."
+docker-compose build --no-cache
+
+echo "🔄 Restarting containers..."
+docker-compose down
 docker-compose up -d
+
+# Cleanup old images
+echo "🧹 Cleaning up old images..."
 docker image prune -f
 
-echo "✅ Mise à jour terminée"
+# Show logs
+echo "📋 Container status:"
+docker-compose ps
+
+echo ""
+echo "📝 To view logs in real-time:"
+echo "   docker-compose logs -f mon-app"
+echo ""
+echo "📝 To view logs from a specific time:"
+echo "   docker-compose logs --tail=100 mon-app"
+echo ""
+echo "🛑 To stop the application:"
+echo "   docker-compose down"
+echo ""
+echo "✅ Update completed successfully!"

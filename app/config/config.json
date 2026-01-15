@@ -1,0 +1,7 @@
+{
+  "max_concurrent": 20,
+  "check_interval": 5,
+  "cache_size": 1000,
+  "log_level": "INFO",
+  "feeds_directory": "/app/feeds"
+}
