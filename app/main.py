@@ -5,7 +5,8 @@ Run with: python -m app.main
 """
 
 import asyncio
-from logging import handlers
+import logging
+import logging.handlers
 import signal
 import sys
 import os
