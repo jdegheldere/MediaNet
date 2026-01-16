@@ -29,4 +29,4 @@ USER appuser
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import sqlite3; conn = sqlite3.connect('/app/data/rss_articles.db'); conn.execute('SELECT 1'); conn.close()"
 
-CMD ["python", "app/main.py","--mode", "once"]
+CMD ["python", "app/main.py"]
