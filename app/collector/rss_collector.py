@@ -66,54 +66,54 @@ class RSSCollector:
     
 
     
-    def process_entries(self, feed_url: str, entries: List, 
-                       feed_id: int, etag: str = None, 
-                       last_modified: str = None):
+    def process_entries(self, conn, feed_url: str, entries: List, 
+                    feed_id: int, etag: str = None, 
+                    last_modified: str = None):
         """Process and store new entries from a feed"""
-        with sqlite3.connect(self.db_path) as conn:
-            new_articles = 0
-            
-            for entry in entries:
-                try:
-                    # Extract article data
-                    title = entry.get('title', 'No title')
-                    summary = entry.get('summary', entry.get('description', ''))
-                    article_url = entry.get('link', '')
-                    published = entry.get('published_parsed') or entry.get('updated_parsed')
-                    
-                    if published:
-                        published = datetime(*published[:6])
-                    
-                    # Check if article already exists
-                    cursor = conn.execute(
-                        "SELECT id FROM articles WHERE article_url = ?",
-                        (article_url,)
+        # Remove the "with sqlite3.connect" line - use the passed connection
+        new_articles = 0
+        
+        for entry in entries:
+            try:
+                # Extract article data
+                title = entry.get('title', 'No title')
+                summary = entry.get('summary', entry.get('description', ''))
+                article_url = entry.get('link', '')
+                published = entry.get('published_parsed') or entry.get('updated_parsed')
+                
+                if published:
+                    published = datetime(*published[:6])
+                
+                # Check if article already exists
+                cursor = conn.execute(
+                    "SELECT id FROM articles WHERE article_url = ?",
+                    (article_url,)
+                )
+                
+                if not cursor.fetchone():
+                    # Insert new article
+                    conn.execute(
+                        """INSERT INTO articles 
+                        (feed_id, title, summary, article_url, published)
+                        VALUES (?, ?, ?, ?, ?)""",
+                        (feed_id, title[:500], summary[:2000], article_url, published)
                     )
+                    new_articles += 1
                     
-                    if not cursor.fetchone():
-                        # Insert new article
-                        conn.execute(
-                            """INSERT INTO articles 
-                               (feed_id, title, summary, article_url, published)
-                               VALUES (?, ?, ?, ?, ?)""",
-                            (feed_id, title[:500], summary[:2000], article_url, published)
-                        )
-                        new_articles += 1
-                        
-                except Exception as e:
-                    logger.error(f"Error processing entry: {e}")
-                    continue
-            
-            # Update feed metadata
-            conn.execute(
-                """INSERT OR REPLACE INTO feeds 
-                   (url, last_checked, last_modified, etag)
-                   VALUES (?, ?, ?, ?)""",
-                (feed_url, datetime.now(), last_modified, etag)
-            )
-            
-            conn.commit()
-            return new_articles
+            except Exception as e:
+                logger.error(f"Error processing entry: {e}")
+                continue
+        
+        # Update feed metadata
+        conn.execute(
+            """UPDATE feeds 
+            SET last_checked = ?, last_modified = ?, etag = ?
+            WHERE url = ?""",
+            (datetime.now(), last_modified, etag, feed_url)
+        )
+        
+        # Don't commit here - let the caller handle it
+        return new_articles
     
     async def process_feeds(self, feed_urls: List[str], 
                       batch_size: int = 10):
@@ -197,15 +197,15 @@ class RSSCollector:
                     
                     feed_id = feed_row[0]
                     
-                    # Process entries for this feed
                     new_articles = self.process_entries(
+                        conn,  # ADD THIS - pass the connection
                         result['url'], 
                         result['entries'],
                         feed_id,
                         result.get('etag'),
                         result.get('last_modified')
                     )
-                    
+                                        
                     if new_articles > 0:
                         logger.info(f"Added {new_articles} new articles from {result['url']}")
                         total_new += new_articles
@@ -213,7 +213,7 @@ class RSSCollector:
                 except Exception as e:
                     logger.error(f"Error processing result for {result['url']}: {e}")
                     continue
-        
+            conn.commit()
         return total_new
 
 
