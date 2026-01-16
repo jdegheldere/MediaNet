@@ -22,8 +22,10 @@ RUN mkdir -p /app/data /app/logs /app/config
 # Create non-root user
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
+#ATTENTION! faire ça plus élégament avec un entrypoint.sh qui execute une commande du style, et est appele au debut du dockerfile:
+    #chown -R appuser:appuser /app/logs /app/data /app/config 2>/dev/null || true
 
-USER appuser
+#USER appuser
 
 # Health check (optional)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
