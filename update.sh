@@ -15,6 +15,9 @@ mkdir -p data feeds logs config
 echo "🔨 Rebuilding Docker images..."
 docker-compose build --no-cache
 
+echo "🔄 Restarting the container..."
+docker-compose down
+docker-compose up -d
 
 # Cleanup old images
 echo "🧹 Cleaning up old images..."
@@ -24,10 +27,7 @@ docker image prune -f
 echo "📋 Container status:"
 docker-compose ps
 
-echo ""
-echo "🔄 To restart te container:"
-echo "docker-compose down"
-echo "docker-compose up -d"
+
 echo ""
 echo "📝 To view logs in real-time:"
 echo "   docker-compose logs -f mon-app"
