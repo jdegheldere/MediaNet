@@ -64,56 +64,7 @@ class RSSCollector:
                 logger.warning(f"File not found: {file_path}")
         return list(urls)
     
-    async def fetch_feed(self, session: aiohttp.ClientSession, 
-                        feed_url: str) -> Optional[Dict]:
-        """Fetch and parse a single RSS feed"""
-        try:
-            # Get feed metadata from DB
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "SELECT last_modified, etag FROM feeds WHERE url = ?",
-                    (feed_url,)
-                )
-                result = cursor.fetchone()
-                last_modified = result[0] if result else None
-                etag = result[1] if result else None
-            
-            # Prepare headers for conditional GET
-            headers = {}
-            if last_modified:
-                headers['If-Modified-Since'] = last_modified
-            if etag:
-                headers['If-None-Match'] = etag
-            
-            # Fetch feed
-            async with session.get(feed_url, headers=headers, 
-                                 timeout=aiohttp.ClientTimeout(total=30)) as response:
-                if response.status == 304:  # Not Modified
-                    logger.debug(f"Feed not modified: {feed_url}")
-                    return None
-                
-                content = await response.read()
-                etag = response.headers.get('ETag')
-                last_modified = response.headers.get('Last-Modified')
-                
-                # Parse feed
-                feed = feedparser.parse(content)
-                
-                if feed.bozo:  # Check for parsing errors
-                    logger.warning(f"Error parsing feed {feed_url}: {feed.bozo_exception}")
-                    return None
-                
-                return {
-                    'url': feed_url,
-                    'feed': feed,
-                    'etag': etag,
-                    'last_modified': last_modified,
-                    'entries': feed.entries
-                }
-                
-        except Exception as e:
-            logger.error(f"Error fetching {feed_url}: {e}")
-            return None
+
     
     def process_entries(self, feed_url: str, entries: List, 
                        feed_id: int, etag: str = None, 
@@ -165,53 +116,157 @@ class RSSCollector:
             return new_articles
     
     async def process_feeds(self, feed_urls: List[str], 
-                          max_concurrent: int = 10):
-        """Process multiple feeds concurrently"""
-        # Update or insert feed URLs in database
+                      batch_size: int = 10):
+        """Process multiple feeds in batches to avoid resource exhaustion"""
+        # Update or insert feed URLs in database (do this once for all URLs)
         with sqlite3.connect(self.db_path) as conn:
             for url in feed_urls:
                 conn.execute(
                     "INSERT OR IGNORE INTO feeds (url, last_checked) VALUES (?, ?)",
-                    (url, datetime.now() - timedelta(days=1))  # Default to yesterday
+                    (url, datetime.now() - timedelta(days=1))
                 )
             conn.commit()
         
-        # Fetch feeds in parallel
-        connector = aiohttp.TCPConnector(limit_per_host=5, limit=max_concurrent, force_close=True)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            tasks = [self.fetch_feed(session, url) for url in feed_urls]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # Process results
         total_new = 0
+        total_batches = (len(feed_urls) + batch_size - 1) // batch_size
+        
+        logger.info(f"Processing {len(feed_urls)} feeds in {total_batches} batches of {batch_size}")
+        
+        # Process feeds in batches
+        for batch_num in range(0, len(feed_urls), batch_size):
+            batch = feed_urls[batch_num:batch_num + batch_size]
+            current_batch = (batch_num // batch_size) + 1
+            
+            logger.info(f"Processing batch {current_batch}/{total_batches}")
+            
+            # Fetch feeds in parallel for this batch only
+            connector = aiohttp.TCPConnector(
+                limit_per_host=3, 
+                limit=batch_size,
+                force_close=True
+            )
+            
+            async with aiohttp.ClientSession(connector=connector) as session:
+                tasks = [self.fetch_feed(session, url) for url in batch]
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results from this batch
+            batch_new = await self.process_batch_results(results)
+            total_new += batch_new
+            
+            logger.info(f"Batch {current_batch}/{total_batches} complete: {batch_new} new articles")
+            
+            # Small delay between batches to ensure resources are released
+            if current_batch < total_batches:
+                await asyncio.sleep(0.5)
+        
+        logger.info(f"Total processing complete: {total_new} new articles from {len(feed_urls)} feeds")
+        return total_new
+
+    async def process_batch_results(self, results: List) -> int:
+        """Process results from a single batch of feeds"""
+        total_new = 0
+        
+        # Collect all valid results first
+        valid_results = []
         for result in results:
             if isinstance(result, Exception):
                 logger.error(f"Task failed: {result}")
                 continue
-                
+            
             if result:
-                # Get or create feed ID
-                with sqlite3.connect(self.db_path) as conn:
+                valid_results.append(result)
+        
+        if not valid_results:
+            return 0
+        
+        # Process all results with a single database connection
+        with sqlite3.connect(self.db_path) as conn:
+            for result in valid_results:
+                try:
+                    # Get feed ID
                     cursor = conn.execute(
                         "SELECT id FROM feeds WHERE url = ?",
                         (result['url'],)
                     )
-                    feed_id = cursor.fetchone()[0]
-                
-                # Process entries
-                new_articles = self.process_entries(
-                    result['url'], 
-                    result['entries'],
-                    feed_id,
-                    result.get('etag'),
-                    result.get('last_modified')
-                )
-                
-                if new_articles > 0:
-                    logger.info(f"Added {new_articles} new articles from {result['url']}")
-                    total_new += new_articles
+                    feed_row = cursor.fetchone()
+                    
+                    if not feed_row:
+                        logger.error(f"Feed not found in database: {result['url']}")
+                        continue
+                    
+                    feed_id = feed_row[0]
+                    
+                    # Process entries for this feed
+                    new_articles = self.process_entries(
+                        result['url'], 
+                        result['entries'],
+                        feed_id,
+                        result.get('etag'),
+                        result.get('last_modified')
+                    )
+                    
+                    if new_articles > 0:
+                        logger.info(f"Added {new_articles} new articles from {result['url']}")
+                        total_new += new_articles
+                        
+                except Exception as e:
+                    logger.error(f"Error processing result for {result['url']}: {e}")
+                    continue
         
         return total_new
+
+
+    async def fetch_feed(self, session: aiohttp.ClientSession, 
+                        feed_url: str) -> Optional[Dict]:
+        """Fetch and parse a single RSS feed"""
+        try:
+            # Get feed metadata from DB
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    "SELECT last_modified, etag FROM feeds WHERE url = ?",
+                    (feed_url,)
+                )
+                result = cursor.fetchone()
+                last_modified = result[0] if result else None
+                etag = result[1] if result else None
+            
+            # Prepare headers for conditional GET
+            headers = {}
+            if last_modified:
+                headers['If-Modified-Since'] = last_modified
+            if etag:
+                headers['If-None-Match'] = etag
+            
+            # Fetch feed
+            async with session.get(feed_url, headers=headers, 
+                                timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status == 304:  # Not Modified
+                    logger.debug(f"Feed not modified: {feed_url}")
+                    return None
+                
+                content = await response.read()
+                etag = response.headers.get('ETag')
+                last_modified = response.headers.get('Last-Modified')
+                
+                # Parse feed
+                feed = feedparser.parse(content)
+                
+                if feed.bozo:  # Check for parsing errors
+                    logger.warning(f"Error parsing feed {feed_url}: {feed.bozo_exception}")
+                    return None
+                
+                return {
+                    'url': feed_url,
+                    'feed': feed,
+                    'etag': etag,
+                    'last_modified': last_modified,
+                    'entries': feed.entries
+                }
+                
+        except Exception as e:
+            logger.error(f"Error fetching {feed_url}: {e}")
+            return None
     
     async def run_continuously(self, txt_files: List[str], 
                              check_interval_minutes: int = 5):
