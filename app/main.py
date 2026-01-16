@@ -116,7 +116,7 @@ class Application:
         # Process feeds
         new_articles = await collector.process_feeds(
             collector.load_feed_urls(feed_files),
-            max_concurrent=int(self.config.get('max_concurrent', 20))
+            batch_size=int(self.config.get('batch_size', 10))
         )
         
         self.logger.info(f"Cycle complete: {new_articles} new articles")
