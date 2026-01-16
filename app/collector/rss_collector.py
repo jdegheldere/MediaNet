@@ -165,7 +165,7 @@ class RSSCollector:
             return new_articles
     
     async def process_feeds(self, feed_urls: List[str], 
-                          max_concurrent: int = 50):
+                          max_concurrent: int = 10):
         """Process multiple feeds concurrently"""
         # Update or insert feed URLs in database
         with sqlite3.connect(self.db_path) as conn:
@@ -177,7 +177,7 @@ class RSSCollector:
             conn.commit()
         
         # Fetch feeds in parallel
-        connector = aiohttp.TCPConnector(limit_per_host=5, limit=max_concurrent)
+        connector = aiohttp.TCPConnector(limit_per_host=5, limit=max_concurrent, force_close=True)
         async with aiohttp.ClientSession(connector=connector) as session:
             tasks = [self.fetch_feed(session, url) for url in feed_urls]
             results = await asyncio.gather(*tasks, return_exceptions=True)
