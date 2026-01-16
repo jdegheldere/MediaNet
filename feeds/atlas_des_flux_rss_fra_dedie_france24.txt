@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - liste France 24 - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.france24.com/fr/%C3%A9missions/%C3%A0-laffiche/podcast
 https://www.france24.com/fr/%C3%A9missions/%C3%A0-laffiche/rss
 https://www.france24.com/fr/tag/%C3%A9conomie/rss

@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Bing News- Agrégé - HTM to RSS - langue française et anglaise - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.bing.com/news/search?q=afrique&qft=sortbydate%3d%221%22+interval%3d%227%22&form=YFNR&format=rss
 https://www.bing.com/news/search?q=Allemagne&qft=sortbydate%3d%221%22+interval%3d%227%22&form=YFNR&format=rss&mkt=fr-fr&setlang=fr
 https://www.bing.com/news/search?q=Asie&qft=sortbydate%3d%221%22+interval%3d%227%22&form=YFNR&format=rss&cc=fr

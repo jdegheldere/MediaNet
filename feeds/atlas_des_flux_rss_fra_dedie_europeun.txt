@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - liste Europe 1 - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.europe1.fr/rss/economie.xml
 https://feeds.audiomeans.fr/feed/0f56e4cd-d44d-4968-ac12-9d1159a54d4c.xml
 https://www.europe1.fr/rss/actualites.xml

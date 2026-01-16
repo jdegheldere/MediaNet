@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - L‘Express - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.lexpress.fr/arc/outboundfeeds/rss/economie.xml
 https://www.youtube.com/feeds/videos.xml?playlist_id=PLMjjv_iZpbLjM5qIdWusSBBKjrYUFUS-u
 https://morss.it/https://feeds.acast.com/public/shows/5dfa2b546a67013366f9d3e6

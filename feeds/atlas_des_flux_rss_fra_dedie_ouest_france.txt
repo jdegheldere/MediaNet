@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Ouest-France - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://bsky.app/profile/did:plc:k6wrrkzk7w5dic3ertb7h5rw/rss
 https://footamateur.ouest-france.fr/feed/
 https://lemagsportauto.ouest-france.fr/feed/

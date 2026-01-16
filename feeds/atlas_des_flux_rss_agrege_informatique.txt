@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - rubrique informatique agrégée - langue française et anglaise - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://tube-numerique-educatif.apps.education.fr/feeds/videos.xml?sort=-publishedAt&isLocal=true
 https://www.adacis.net/newsletter/index.xml
 https://discuss.afpy.org/c/emplois/14.rss

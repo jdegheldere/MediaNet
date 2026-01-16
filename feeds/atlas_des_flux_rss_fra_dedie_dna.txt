@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Dernières Nouvelle d’Alsace - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.dna.fr/economie/rss
 https://www.dna.fr/actualite/edito/rss
 https://www.dna.fr/Education/rss

@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - rubrique corse agrégée - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 http://flussi.annuda.saynete.net/corse_economie_rss.xml
 http://flussi.annuda.saynete.net/corse_cite_rss.xml
 http://flussi.annuda.saynete.net/corse_culture_rss.xml

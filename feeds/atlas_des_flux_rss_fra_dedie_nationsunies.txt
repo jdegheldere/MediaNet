@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Nations Unies - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://fr.euronews.com/rss?level=tag&name=nations-unies
 https://www.france24.com/fr/tag/onu/rss
 https://www.humanite.fr/mot-cle/nations-unies/feed

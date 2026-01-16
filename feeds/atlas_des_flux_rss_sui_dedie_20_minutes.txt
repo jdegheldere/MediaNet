@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - liste 20 minutes - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://partner-feeds.20min.ch/rss/20minutes/economie
 https://partner-feeds.20min.ch/rss/20minutes/sports/auto-moto
 https://bsky.app/profile/did:plc:aqazdxh3qh4kmgnw36zxawne/rss

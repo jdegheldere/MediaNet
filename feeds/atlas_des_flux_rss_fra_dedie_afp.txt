@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - liste AFP - Agence France-Presse - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.afp.com/fr/rss.xml
 https://www.youtube.com/feeds/videos.xml?channel_id=UCdZ9tvVQEJxnR77qWA_UcFA
 https://www.afp.com/fr/actus/afp_actualite/792,31,9,7,33/feed

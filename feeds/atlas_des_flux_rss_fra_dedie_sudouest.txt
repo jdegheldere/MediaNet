@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Sud-Ouest - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://bsky.app/profile/did:plc:56nkft5g4rlp6nd77tturs4f/rss
 https://bsky.app/profile/did:plc:wrjybqj5voizriwalxmbkwpd/rss
 https://bsky.app/profile/did:plc:huxt7fee2xvhqnq75tpkzyar/rss

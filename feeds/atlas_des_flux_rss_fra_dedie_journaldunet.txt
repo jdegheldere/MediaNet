@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - informatique - Journal du net  - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://bsky.app/profile/did:plc:hgurtny573khf6n6gqnfqwjl/rss
 https://www.journaldunet.com/rss/
 https://www.journaldunet.com/adtech/rss/

@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Le Point - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://bsky.app/profile/did:plc:mzjuep5734cdqeazu6gaontp/rss
 https://bsky.app/profile/did:plc:p3l4w2r6r4csmcirdq4q3i32/rss
 https://www.lepoint.fr/arc/outboundfeeds/rss/category/economie/

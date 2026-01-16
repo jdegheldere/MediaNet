@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - rubrique sport agrégé- langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://tube-education-physique-et-sportive.apps.education.fr/feeds/videos.xml?sort=-publishedAt
 http://flussi.annuda.saynete.net/corse_football_rss.xml
 http://flussi.annuda.saynete.net/corse_sport_rss.xml

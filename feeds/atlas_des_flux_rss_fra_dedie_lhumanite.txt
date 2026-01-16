@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - L’Humanité - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.humanite.fr/mot-cle/education-nationale/feed
 https://www.humanite.fr/mot-cle/egalite-femmes-hommes/feed
 https://www.humanite.fr/mot-cle/egypte/feed

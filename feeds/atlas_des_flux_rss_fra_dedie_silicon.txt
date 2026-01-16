@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - informatique - Silicon - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.silicon.fr/evenement/feed
 https://www.silicon.fr/feed
 https://www.silicon.fr/thematique/business-1367/feed

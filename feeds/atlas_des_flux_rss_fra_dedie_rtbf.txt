@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - RTBF - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://feeds.audiomeans.fr/feed/63fdbabf-527c-4342-ba04-a955f3e78955.xml
 https://rss.rtbf.be/article/rss/highlight_rtbf_ecologie.xml?source=internal
 https://rss.rtbf.be/article/rss/highlight_rtbf_info-economie.xml?source=internal

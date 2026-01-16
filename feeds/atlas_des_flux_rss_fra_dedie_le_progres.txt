@@ -1,8 +1,3 @@
-<!-- Atlas des flux RSS/ATOM - Le Progrès - langue française - par Saynète https://www.saynete.net - https://atlasflux.saynete.net 12_01_2026 -->
-<meta name='robots' content='noindex'>
-<meta name='googlebot' content='noindex'>
-<meta name='robots' content='nofollow'>
-
 https://www.leprogres.fr/economie/rss
 https://www.leprogres.fr/education/rss
 https://www.leprogres.fr/magazine-education-jeunesse/rss
