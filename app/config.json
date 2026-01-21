@@ -1,0 +1,8 @@
+{ 
+    "interval_minutes": 20,
+    "db_path":"data5.db",
+    "max_connection_retries":4,
+    "semaphore_count":50,
+    "logs_folder":"logs",
+    "url_batch_size":300
+}
