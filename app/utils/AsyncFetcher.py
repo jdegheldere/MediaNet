@@ -2,14 +2,11 @@ import aiohttp
 import asyncio
 import aiosqlite
 import time
-import feedparser
 from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
 import sys
 import json
-import cProfile
-import pstats
 from io import BytesIO
 from lxml import etree
 from email.utils import parsedate_to_datetime
@@ -422,12 +419,12 @@ class AsyncFetcher:
 
 if __name__ == '__main__':
     fetcher = AsyncFetcher(r'app\config\config.json')
-    profiler = cProfile.Profile()
+    #profiler = cProfile.Profile()
 
-    profiler.enable()
+    #profiler.enable()
 
     asyncio.run(fetcher.run_periodic())
-    profiler.disable()
+    #profiler.disable()
 
 
-    profiler.dump_stats('single_entry.profile')
+    #profiler.dump_stats('single_entry.profile')
