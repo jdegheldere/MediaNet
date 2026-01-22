@@ -1,0 +1,9 @@
+{ 
+    "interval_minutes": 30,
+    "db_path":"databaseTest.db",
+    "max_connection_retries":4,
+    "semaphore_count":50,
+    "logs_folder":"logs",
+    "url_batch_size":500,
+    "rss_path":"txt_rss_test.txt"
+}
