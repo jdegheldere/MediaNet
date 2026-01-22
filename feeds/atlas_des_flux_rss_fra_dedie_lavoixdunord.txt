@@ -1,6 +1,0 @@
-https://bsky.app/profile/did:plc:5gboqophxgbh7htucfhyt5gb/rss
-https://www.youtube.com/feeds/videos.xml?playlist_id=PLAyKbxXX8PJwWXzWScQ68qLxmEadQ9WfO
-https://api.octopus.saooti.com/rss/emission/6456.rss
-https://www.youtube.com/feeds/videos.xml?playlist_id=PLAyKbxXX8PJyJ-xSHlVKf77bPL3wPcubT
-https://api.octopus.saooti.com/rss/emission/2338.rss
-https://www.youtube.com/feeds/videos.xml?channel_id=UCmHw3H5Eq05tksL0Df-XP_A
