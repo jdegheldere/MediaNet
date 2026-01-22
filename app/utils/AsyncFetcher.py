@@ -12,23 +12,46 @@ import cProfile
 import pstats
 from io import BytesIO
 from lxml import etree
+from email.utils import parsedate_to_datetime
+"""
+TODO :
+[ ] Autres accès a la BDD, en ecriture (ajout manuel d'articles, d'url rss,...)
+[ ] gestion mémoire (backup,...)
 
+"""
 async def parse_feed_lxml(content):
     """Parse RSS/Atom feed using lxml (much faster than feedparser)"""
     loop = asyncio.get_event_loop()
     
-    # Parse XML
     parser = etree.XMLParser(recover=True)
     tree = await loop.run_in_executor(None, etree.parse, BytesIO(content), parser)
     
-    # Extract entries (simplified - adapt to your RSS structure)
     entries = []
-    for item in tree.xpath('//item') + tree.xpath('//entry'):  # RSS + Atom
+    for item in tree.xpath('//item') + tree.xpath('//entry'):
+        # Récupérer la date brute
+        pub_date_str = item.findtext('pubDate') or item.findtext('published')
+        
+        # Parser la date
+        published_parsed = None
+        if pub_date_str:
+            try:
+                # Pour les dates RFC 2822 (RSS)
+                dt = parsedate_to_datetime(pub_date_str)
+                published_parsed = dt.timetuple()
+            except:
+                try:
+                    # Pour les dates ISO 8601 (Atom)
+                    dt = datetime.fromisoformat(pub_date_str.replace('Z', '+00:00'))
+                    published_parsed = dt.timetuple()
+                except:
+                    pass
+        
         entry = {
             'title': item.findtext('title', ''),
             'link': item.findtext('link', ''),
             'summary': item.findtext('description') or item.findtext('summary') or '',
-            'published': item.findtext('pubDate') or item.findtext('published'),
+            'published': pub_date_str,
+            'published_parsed': published_parsed,  # Ajout du champ parsé
         }
         entries.append(entry)
     
@@ -108,6 +131,43 @@ class AsyncFetcher:
         with open(self.config_path, 'r', encoding='utf-8') as f:
             return json.load(f)
 
+    async def _init_db(self, conn):
+        #On initialise la table des feeds, a partir d'un fichier texte UNIQUE contenant toutes les URL
+        self.logger.debug("Setting up Database ...")
+        await conn.execute("""
+        CREATE TABLE IF NOT EXISTS feeds (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        URL TEXT UNIQUE NOT NULL,
+        LastState INTEGER DEFAULT 1,
+        last_modified TEXT,
+        etag TEXT
+        )
+        """)
+        await conn.commit()
+        self.logger.debug("parsing RSS txt file ...")
+        with open(self.config.get('rss_path')) as f:
+            list_urls = f.readlines()
+        self.logger.info(f"Done!, extracted {len(list_urls)} URLs from file")
+        self.logger.debug("Saving to database ...")
+        await conn.executemany("INSERT OR IGNORE INTO feeds (URL) VALUES (?)",[(url,) for url in list_urls])
+        await conn.commit()
+        self.logger.debug("feeds database fully initiated")
+
+        #On initialise la table articles
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS articles (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                ID_RSS INTEGER NOT NULL,
+                Article_URL TEXT NOT NULL,
+                Title TEXT NOT NULL,
+                Description TEXT,
+                Date INTEGER,
+                FOREIGN KEY (ID_RSS) REFERENCES feeds(ID)
+            )
+        """)
+
+        await self.create_indexes(conn)
+
     async def fetch_url(self, url, session):
         #timeSync0 = time.time()
         conn = await self._get_conn()
@@ -143,7 +203,7 @@ class AsyncFetcher:
             try:
                 #await self.save_article(url, feed.entries, etag, last_modified)
                 #await self.save_article(url, feed['entries'], etag, last_modified)
-                num_articles, num_skipped = await self.save_articles_bulk(url, feed['entries'], etag, last_modified)
+                num_articles, num_skipped = await self.save_articles_bulk(url, feed["entries"], etag, last_modified)
                 await conn.execute("UPDATE feeds SET LastState=1 WHERE URL=?", (url,)) #Si tout a bien marché, le lastState est à 1
                 await conn.commit()
                 return {"message":"Articles saved successfuly",
@@ -231,7 +291,6 @@ class AsyncFetcher:
             self.logger.debug(f"Saved article data {title}")
             summary = entry.get('summary', entry.get('description', ''))
             article_url = entry.get('link', '')
-            source = ''
             published = entry.get('published_parsed') or entry.get('updated_parsed')
             if published:
                 published = datetime(*published[:6])
@@ -239,8 +298,6 @@ class AsyncFetcher:
             else:
                 published = datetime.now()
                 published_ts = int(published.timestamp())
-            #to_insert.append((feed_url, source, article_url, title, summary, published))
-            #TODO: remplacer le stockage de l'URL du feed par le stockage de l'ID du feed
             to_insert.append((id_rss, article_url, title, summary, published_ts))
         self.logger.debug(f"Id RSS : {id_rss} | articles stored : {len(to_insert)} | Skipped duplicates: {len(entries) - len(to_insert)}")
         if to_insert:
@@ -286,24 +343,10 @@ class AsyncFetcher:
         self.logger.info("Indexes created successfully!")
 
     async def main(self):
-        time0 = time.time()
         conn = await self._get_conn()
+        await self._init_db(conn)
         cursor = await conn.execute("SELECT DISTINCT URL FROM feeds WHERE LastState = 1") #On récupère tous les URLs qui sont VALIDES (i.e qui ont fonctionné à l'itération n-1)
         URLs = await cursor.fetchall()
-        
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS articles (
-                ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                ID_RSS INTEGER NOT NULL,
-                Article_URL TEXT NOT NULL,
-                Title TEXT NOT NULL,
-                Description TEXT,
-                Date INTEGER,
-                FOREIGN KEY (ID_RSS) REFERENCES feeds(ID)
-            )
-        """)
-
-        await self.create_indexes(conn)
         batch_size = self.config.get("url_batch_size", 300)
         batches = [URLs[i:i + batch_size] for i in range(0, len(URLs), batch_size)]
         
@@ -314,6 +357,58 @@ class AsyncFetcher:
             await asyncio.sleep(0.5)
         await self.cleanup()
 
+    async def query_db(self, conditions, limit, order_by = "ID DESC"):
+        conn = await self._get_conn()
+        query = "SELECT * FROM articles"
+        params = []
+        #Ajout des conditions WHERE à la requête
+        if conditions:
+            allowed_columns = {"ID", "ID_RSS", "Article_URL", "Title", "Description", "Date"}
+            where_clauses = []
+            for column, value in conditions.items():
+                if column not in allowed_columns:
+                    raise ValueError(f"Colonne non autorisée: {column}")
+                where_clauses.append(f"{column} = ?")
+                params.append(value)
+            
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+        
+        #Ajout du ORDER BY
+        allowed_orders = {"ID", "ID DESC", "Title", "Title DESC", "Date", "Date DESC"}
+        if order_by not in allowed_orders:
+            self.logger.warning(f"ORDER BY clause not authorized in query_db() {order_by}")
+            order_by = "ID_DESC"
+        query += f" ORDER BY {order_by}"
+
+        #Ajout de LIMIT
+        if limit:
+            query += " LIMIT ?"
+            params.append(limit)
+
+        async with conn.execute(query, params) as cur:
+            rows = await cur.fetchall()     
+            return [dict(row) for row in rows]       
+
+    async def run_periodic(self, interval_minutes = None):
+        if self._running:
+            self.logger.info("Le fetcher est déjà en cours d'exécution")
+            return
+        self._running = True
+        interval = interval_minutes or self.config.get("interval_minutes", 20)
+        interval_seconds = interval*60
+        self.logger.info(f"Démarrage du fetcher périodique (intervalle {interval} minutes)")
+        try:
+            while self._running:
+                await self.main()
+                self.logger.info(f"prochaine exécution dans {interval} minutes")
+                await asyncio.sleep(interval_seconds)
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            self.logger.warning("Interruption clavier")
+            self._running = False #on arrèete l'exécution!
+        finally:
+            await self.cleanup()
+
     async def cleanup(self):
         if self.session and not self.session.closed:
             await self.session.close()
@@ -321,14 +416,17 @@ class AsyncFetcher:
         if self.conn:
             await self.conn.close()
             self.logger.info("connexion DB fermée")
+    
+    def stop(self):
+        self._running = False
 
 if __name__ == '__main__':
-    fetcher = AsyncFetcher('config.json')
+    fetcher = AsyncFetcher(r'app\config\config.json')
     profiler = cProfile.Profile()
 
     profiler.enable()
 
-    asyncio.run(fetcher.main())
+    asyncio.run(fetcher.run_periodic())
     profiler.disable()
 
 
