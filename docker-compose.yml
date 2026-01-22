@@ -21,7 +21,6 @@ services:
       - ./data:/app/data                # Database persistence
       - ./feeds:/app/feeds              # Feed configuration files
       - ./logs:/app/logs                # Log files
-      - ./config:/app/config            # Optional config files
     
     healthcheck:
       test: ["CMD", "python", "-c", "import sqlite3; conn = sqlite3.connect('/app/data/rss_articles.db'); conn.execute('SELECT 1'); conn.close()"]
