@@ -1,8 +1,8 @@
-{
-  "max_concurrent": 20,
-  "check_interval": 5,
-  "cache_size": 1000,
-  "log_level": "INFO",
-  "feeds_directory": "/app/feeds",
-  "batch_size": 40
+{ 
+    "interval_minutes": 20,
+    "db_path":"databaseTest.db",
+    "max_connection_retries":4,
+    "semaphore_count":50,
+    "logs_folder":"logs",
+    "url_batch_size":500
 }
