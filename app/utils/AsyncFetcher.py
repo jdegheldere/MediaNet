@@ -312,9 +312,12 @@ class AsyncFetcher:
             tot_skipped = 0
             tot_err = 0
             for response in responses:
-                tot_articles += response.get('num_articles',0)
-                tot_skipped += response.get('skipped',0)
-                tot_err += response.get("skipped_error", 0)
+                try:
+                    tot_articles += response.get('num_articles',0)
+                    tot_skipped += response.get('skipped',0)
+                    tot_err += response.get("skipped_error", 0)
+                except Exception as e:
+                    self.logger.warning(f"Exception occured : {e}")
             time1 = time.time()
             self.logger.info(f"{tot_articles} added to database | {tot_skipped} skipped (duplicates) | {tot_err} unsaved (errors)")
             self.logger.info(f"Elapsed time for {len(url_batch)} RSS feeds in batch ID {batch_id}: {time1-time0}")
