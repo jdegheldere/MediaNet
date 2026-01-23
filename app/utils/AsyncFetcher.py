@@ -13,6 +13,8 @@ from email.utils import parsedate_to_datetime
 import pickle
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from concurrent.futures import ThreadPoolExecutor
+
 """
 TODO :
 [ ] Autres accès a la BDD, en ecriture (ajout manuel d'articles, d'url rss,...)
@@ -78,7 +80,16 @@ class AsyncFetcher:
         self.config = self._load_config()
         self._running = False
         self.logger = self._setup_logging()
-        self.embedding_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        self.embedding_model = None
+
+    async def init_model(self):
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as pool:
+            self.embedding_model = await loop.run_in_executor(pool, self._load_model)
+
+    def _load_model(self):
+        # charger le modele (bloquant!!)
+        return SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
     def _setup_logging(self): 
         logs_folder = self.config.get('logs_folder', '')   
@@ -360,6 +371,10 @@ class AsyncFetcher:
         self.logger.info("Indexes created successfully!")
 
     async def main(self):
+        if self.embedding_model is None:
+            self.logger.info("Embedding model loading ...")
+            await self.init_model()
+            self.logger.info("Embedding model fully loaded!")
         conn = await self._get_conn()
         await self._init_db(conn)
         cursor = await conn.execute("SELECT DISTINCT URL FROM feeds WHERE LastState = 1") #On récupère tous les URLs qui sont VALIDES (i.e qui ont fonctionné à l'itération n-1)
