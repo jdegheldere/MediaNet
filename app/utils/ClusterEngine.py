@@ -1,472 +1,214 @@
 """
-Système de recherche et regroupement d'articles de presse similaires
-Architecture hybride : Embeddings sémantiques + BM25 + Cache DB
+Moteur de recherche d'articles similaires - Version optimisée mémoire
+Usage: from search_engine import ArticleSearchEngine
 """
 
-import sqlite3
+import asyncio
 import numpy as np
 import pickle
-from typing import List, Dict, Tuple, Optional
-from dataclasses import dataclass
-from datetime import datetime
-import hashlib
 import json
-
-# Installation requise :
-# pip install sentence-transformers faiss-cpu rank-bm25 beautifulsoup4 requests feedparser tqdm
-
+from datetime import datetime
 from sentence_transformers import SentenceTransformer
-import faiss
-from rank_bm25 import BM25Okapi
-import feedparser
-import requests
-from bs4 import BeautifulSoup
-from tqdm import tqdm
-from pathlib import Path
-import re
 
 
-@dataclass
-class Article:
-    """Représentation d'un article"""
-    id: str
-    title: str
-    content: str
-    url: str
-    source: str
-    published_date: Optional[datetime]
-    embedding: Optional[np.ndarray] = None
-
-
-class ArticleClusteringEngine:
-    """Moteur de recherche et clustering d'articles de presse"""
+class ArticleSearchEngine:
     
-    def __init__(self, db_path: str = "data/main.db", 
-                 model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"):
+    def __init__(self, fetcher, batch_size=1000):
+        self.fetcher = fetcher
+        self.model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        self.batch_size = batch_size  # Nombre d'articles chargés à la fois
+    
+    def _text_to_vector(self, text):
+        vector = self.model.encode(text, convert_to_numpy=True)
+        return vector.astype('float32')
+    
+    async def _count_articles_with_embedding(self):
+        """Compte le nombre total d'articles avec embedding"""
+        conn = await self.fetcher._get_conn()
+        async with conn.execute(
+            'SELECT COUNT(*) FROM articles WHERE embedding IS NOT NULL'
+        ) as cur:
+            row = await cur.fetchone()
+            return row[0]
+    
+    async def _get_articles_batch(self, offset, limit):
+        """Récupère un batch d'articles avec embedding"""
+        conn = await self.fetcher._get_conn()
+        async with conn.execute(
+            'SELECT ID, Title, Article_URL, ID_RSS, Date, Description, embedding FROM articles WHERE embedding IS NOT NULL ORDER BY ID LIMIT ? OFFSET ?',
+            (limit, offset)
+        ) as cur:
+            rows = await cur.fetchall()
+            return [dict(row) for row in rows]
+    
+    async def search(self, query_text, top_k=10, min_score=0.6, 
+                    exclude_id=None, display=True, save_to=None):
         """
-        Args:
-            db_path: Chemin vers la base SQLite
-            model_name: Modèle de sentence-transformers (optimisé pour le français)
+        Cherche les articles similaires (traitement par batch pour économiser la RAM)
+        
+        query_text: texte de recherche
+        top_k: nombre max de résultats
+        min_score: score minimum (0-1, recommandé 0.6)
+        exclude_id: ID d'article à exclure (optionnel)
+        display: afficher les résultats dans le terminal
+        save_to: nom du fichier JSON pour sauvegarder (ex: "results.json")
         """
-        self.db_path = db_path
-        self.model = SentenceTransformer(model_name)
-        self.dimension = 384  # Dimension du modèle MiniLM
+        query_vector = self._text_to_vector(query_text)
         
-        # Index FAISS pour recherche vectorielle ultra-rapide
-        self.index = faiss.IndexFlatIP(self.dimension)  # Inner Product (cosine similarity)
-        self.id_to_index = {}  # Mapping article_id -> position dans l'index
-        self.index_to_id = {}  # Mapping inverse
+        total_articles = await self._count_articles_with_embedding()
         
-        # BM25 pour recherche lexicale
-        self.bm25 = None
-        self.bm25_corpus = []
-        self.bm25_ids = []
-        
-        self._init_database()
-        self._load_cache()
-    
-    def _init_database(self):
-        """Initialise la base de données SQLite"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS articles (
-                id TEXT PRIMARY KEY,
-                title TEXT NOT NULL,
-                content TEXT NOT NULL,
-                url TEXT UNIQUE,
-                source TEXT,
-                published_date TEXT,
-                embedding BLOB,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        c.execute('''
-            CREATE INDEX IF NOT EXISTS idx_source ON articles(source)
-        ''')
-        
-        c.execute('''
-            CREATE INDEX IF NOT EXISTS idx_published ON articles(published_date)
-        ''')
-        
-        conn.commit()
-        conn.close()
-    
-    def _load_cache(self):
-        """Charge les embeddings et index depuis la DB"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        c.execute('SELECT id, title, content, embedding FROM articles WHERE embedding IS NOT NULL')
-        
-        embeddings_list = []
-        idx = 0
-        
-        for row in c.fetchall():
-            article_id, title, content, embedding_blob = row
-            
-            if embedding_blob:
-                embedding = pickle.loads(embedding_blob)
-                embeddings_list.append(embedding)
-                
-                self.id_to_index[article_id] = idx
-                self.index_to_id[idx] = article_id
-                
-                # Pour BM25
-                self.bm25_corpus.append(self._tokenize(title + " " + content))
-                self.bm25_ids.append(article_id)
-                
-                idx += 1
-        
-        # Reconstruction de l'index FAISS
-        if embeddings_list:
-            embeddings_array = np.array(embeddings_list).astype('float32')
-            faiss.normalize_L2(embeddings_array)  # Normalisation pour cosine similarity
-            self.index.add(embeddings_array)
-            
-            # Reconstruction BM25
-            self.bm25 = BM25Okapi(self.bm25_corpus)
-        
-        conn.close()
-        print(f"✓ Cache chargé : {len(embeddings_list)} articles indexés")
-    
-    def _tokenize(self, text: str) -> List[str]:
-        """Tokenization simple pour BM25"""
-        return text.lower().split()
-    
-    def _generate_id(self, url: str) -> str:
-        """Génère un ID unique basé sur l'URL"""
-        return hashlib.md5(url.encode()).hexdigest()
-    
-    def _compute_embedding(self, text: str) -> np.ndarray:
-        """Calcule l'embedding d'un texte"""
-        embedding = self.model.encode(text, convert_to_numpy=True)
-        return embedding.astype('float32')
-    
-    def add_article(self, title: str, content: str, url: str, 
-                   source: str, published_date: Optional[datetime] = None) -> str:
-        """
-        Ajoute un article à la base et l'indexe
-        
-        Returns:
-            article_id si ajouté, None si déjà existant
-        """
-        article_id = self._generate_id(url)
-        
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        # Vérifier si existe déjà
-        c.execute('SELECT id FROM articles WHERE id = ?', (article_id,))
-        if c.fetchone():
-            conn.close()
-            return None
-        
-        # Calculer l'embedding
-        combined_text = f"{title} {content}"
-        embedding = self._compute_embedding(combined_text)
-        embedding_blob = pickle.dumps(embedding)
-        
-        # Insérer en DB
-        c.execute('''
-            INSERT INTO articles (id, title, content, url, source, published_date, embedding)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (article_id, title, content, url, source, 
-              published_date.isoformat() if published_date else None,
-              embedding_blob))
-        
-        conn.commit()
-        conn.close()
-        
-        # Ajouter à l'index FAISS
-        normalized_embedding = embedding.reshape(1, -1)
-        faiss.normalize_L2(normalized_embedding)
-        
-        current_index = self.index.ntotal
-        self.index.add(normalized_embedding)
-        self.id_to_index[article_id] = current_index
-        self.index_to_id[current_index] = article_id
-        
-        # Ajouter à BM25
-        tokens = self._tokenize(combined_text)
-        self.bm25_corpus.append(tokens)
-        self.bm25_ids.append(article_id)
-        self.bm25 = BM25Okapi(self.bm25_corpus)
-        
-        return article_id
-    
-    def find_similar_articles(self, query_text: str, 
-                            top_k: int = 50,
-                            similarity_threshold: float = 0.55,
-                            alpha: float = 0.7) -> List[Dict]:
-        """
-        Trouve les articles similaires à un texte donné
-        
-        Args:
-            query_text: Texte de l'article source
-            top_k: Nombre max de résultats
-            similarity_threshold: Seuil de similarité (0-1)
-            alpha: Poids embeddings vs BM25 (0.7 = 70% embeddings, 30% BM25)
-        
-        Returns:
-            Liste de dicts avec id, title, url, source, similarity_score
-        """
-        if self.index.ntotal == 0:
+        if total_articles == 0:
+            print("⚠️ Aucun article avec embedding trouvé")
             return []
         
-        # 1. Recherche vectorielle (sémantique)
-        query_embedding = self._compute_embedding(query_text).reshape(1, -1)
-        faiss.normalize_L2(query_embedding)
+        print(f"🔍 Recherche dans {total_articles} articles (par batch de {self.batch_size})...")
         
-        distances, indices = self.index.search(query_embedding, min(top_k * 2, self.index.ntotal))
+        # Stocker seulement les meilleurs scores (top_k * 3 pour avoir de la marge)
+        best_scores = []
+        max_stored = top_k * 3
         
-        # Scores sémantiques
-        semantic_scores = {}
-        for dist, idx in zip(distances[0], indices[0]):
-            if idx != -1:  # -1 = pas de résultat
-                article_id = self.index_to_id[idx]
-                semantic_scores[article_id] = float(dist)
+        offset = 0
+        processed = 0
         
-        # 2. Recherche lexicale (BM25)
-        lexical_scores = {}
-        if self.bm25:
-            query_tokens = self._tokenize(query_text)
-            bm25_scores = self.bm25.get_scores(query_tokens)
+        while offset < total_articles:
+            batch = await self._get_articles_batch(offset, self.batch_size)
             
-            # Normalisation des scores BM25
-            max_bm25 = max(bm25_scores) if len(bm25_scores) > 0 else 1.0
-            for i, score in enumerate(bm25_scores):
-                article_id = self.bm25_ids[i]
-                lexical_scores[article_id] = score / max_bm25 if max_bm25 > 0 else 0
+            for article in batch:
+                if exclude_id and article['ID'] == exclude_id:
+                    continue
+                
+                article_vector = pickle.loads(article['embedding'])
+                
+                # Cosine similarity
+                similarity = np.dot(query_vector, article_vector) / (
+                    np.linalg.norm(query_vector) * np.linalg.norm(article_vector)
+                )
+                
+                score = float(similarity)
+                
+                # Garder seulement si score >= min_score
+                if score >= min_score:
+                    # Stocker sans l'embedding (économie mémoire)
+                    article_light = {
+                        'ID': article['ID'],
+                        'Title': article['Title'],
+                        'Article_URL': article['Article_URL'],
+                        'ID_RSS': article['ID_RSS'],
+                        'Date': article['Date'],
+                        'Description': article['Description']
+                    }
+                    best_scores.append((article_light, score))
+                    
+                    # Si on dépasse max_stored, trier et garder seulement les meilleurs
+                    if len(best_scores) > max_stored:
+                        best_scores.sort(key=lambda x: x[1], reverse=True)
+                        best_scores = best_scores[:max_stored]
+            
+            processed += len(batch)
+            offset += self.batch_size
+            
+            # Afficher progression tous les 5000 articles
+            if processed % 5000 == 0 or processed >= total_articles:
+                print(f"  Traité: {processed}/{total_articles} articles")
         
-        # 3. Fusion des scores (hybride)
-        all_ids = set(semantic_scores.keys()) | set(lexical_scores.keys())
-        hybrid_scores = {}
+        # Tri final et limitation à top_k
+        best_scores.sort(key=lambda x: x[1], reverse=True)
         
-        for article_id in all_ids:
-            sem_score = semantic_scores.get(article_id, 0)
-            lex_score = lexical_scores.get(article_id, 0)
-            hybrid_scores[article_id] = alpha * sem_score + (1 - alpha) * lex_score
-        
-        # 4. Filtrage et tri
-        filtered = [(aid, score) for aid, score in hybrid_scores.items() 
-                   if score >= similarity_threshold]
-        filtered.sort(key=lambda x: x[1], reverse=True)
-        
-        # 5. Récupération des métadonnées
         results = []
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
+        for article, score in best_scores[:top_k]:
+            results.append({
+                'id': article['ID'],
+                'title': article['Title'],
+                'url': article['Article_URL'],
+                'source': article['ID_RSS'],
+                'date': article['Date'],
+                'description': article['Description'],
+                'similarity_score': round(score, 3)
+            })
         
-        for article_id, score in filtered[:top_k]:
-            c.execute('''
-                SELECT title, url, source, published_date 
-                FROM articles WHERE id = ?
-            ''', (article_id,))
-            
-            row = c.fetchone()
-            if row:
-                results.append({
-                    'id': article_id,
-                    'title': row[0],
-                    'url': row[1],
-                    'source': row[2],
-                    'published_date': row[3],
-                    'similarity_score': round(score, 3)
-                })
+        if display:
+            self._display_results(results, query_text)
         
-        conn.close()
+        if save_to:
+            self._save_results(results, save_to, query_text)
+        
         return results
     
-    def load_rss_urls_from_files(self, rss_folder: str = "data/rss") -> List[str]:
+    async def search_by_id(self, article_id, top_k=10, min_score=0.6, 
+                          display=True, save_to=None):
         """
-        Charge toutes les URLs de flux RSS depuis les fichiers .txt d'un dossier
+        Cherche les articles similaires à un article existant
         
-        Args:
-            rss_folder: Chemin vers le dossier contenant les fichiers .txt
-            
-        Returns:
-            Liste des URLs de flux RSS
+        article_id: ID de l'article de référence
+        autres params: identiques à search()
         """
-        feed_urls = []
-        rss_path = Path(rss_folder)
+        articles = await self.fetcher.query_db(
+            conditions={"ID": article_id},
+            limit=1,
+            order_by="ID DESC"
+        )
         
-        if not rss_path.exists():
-            print(f"Le dossier {rss_folder} n'existe pas")
-            return feed_urls
+        if not articles:
+            print(f"⚠️ Article {article_id} introuvable")
+            return []
         
-        txt_files = list(rss_path.glob("*.txt"))
+        article = articles[0]
+        query_text = f"{article['Title']} {article['Description']}"
         
-        for txt_file in tqdm(txt_files, desc="Loading RSS files", unit="file"):
-            try:
-                with open(txt_file, 'r', encoding='utf-8', errors='ignore') as f:
-                    for line in f:
-                        line = line.strip()
-                        # Ignore les lignes vides, les commentaires HTML et les balises meta
-                        if line and not line.startswith('<!--') and not line.startswith('<'):
-                            # Vérifie si la ligne est une URL valide
-                            if line.startswith('http://') or line.startswith('https://'):
-                                feed_urls.append(line)
-            except Exception as e:
-                tqdm.write(f"Erreur lors de la lecture de {txt_file}: {e}")
-        
-        return feed_urls
-
-    def scrape_rss_feeds(self, feed_urls: List[str] = None) -> int:
-        """
-        Récupère et indexe les articles depuis des flux RSS
-        
-        Args:
-            feed_urls: Liste des URLs de flux RSS. Si None, charge depuis data/rss
-            
-        Returns:
-            Nombre d'articles ajoutés
-        """
-        # Si aucune URL fournie, charger depuis les fichiers
-        if feed_urls is None:
-            feed_urls = self.load_rss_urls_from_files()
-        
-        if not feed_urls:
-            print("Aucun flux RSS à traiter")
-            return 0
-        
-        added_count = 0
-        
-        print(f"\nTraitement de {len(feed_urls)} flux RSS...")
-        
-        # Barre de progression pour les feeds
-        for feed_url in tqdm(feed_urls, desc="Processing RSS feeds", unit="feed"):
-            try:
-                feed = feedparser.parse(feed_url)
-                
-                # Barre de progression pour les articles dans chaque feed
-                entries = feed.entries
-                for entry in tqdm(entries, desc=f"Articles from {feed_url[:30]}...", 
-                                unit="article", leave=False):
-                    title = entry.get('title', '')
-                    url = entry.get('link', '')
-                    summary = entry.get('summary', '')
-                    
-                    # Extraction de la date
-                    pub_date = None
-                    if 'published_parsed' in entry:
-                        pub_date = datetime(*entry.published_parsed[:6])
-                    
-                    # Extraction du contenu complet (si possible)
-                    content = self._extract_article_content(url) or summary
-                    
-                    if title and url and content:
-                        result = self.add_article(
-                            title=title,
-                            content=content,
-                            url=url,
-                            source=feed.feed.get('title', 'Unknown'),
-                            published_date=pub_date
-                        )
-                        
-                        if result:
-                            added_count += 1
-                            
-            except Exception as e:
-                tqdm.write(f"Erreur lors du parsing de {feed_url}: {e}")
-        
-        return added_count
+        return await self.search(
+            query_text, 
+            top_k=top_k, 
+            min_score=min_score,
+            exclude_id=article_id,
+            display=display,
+            save_to=save_to
+        )
     
-    def _extract_article_content(self, url: str, timeout: int = 5) -> Optional[str]:
-        """Extrait le contenu textuel d'une page web"""
-        try:
-            response = requests.get(url, timeout=timeout)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            
-            # Suppression des scripts, styles, etc.
-            for script in soup(['script', 'style', 'nav', 'footer', 'header']):
-                script.decompose()
-            
-            # Extraction du texte
-            text = soup.get_text(separator=' ', strip=True)
-            return text[:10000]  # Limite à 10k caractères
-            
-        except Exception:
-            return None
+    def _display_results(self, results, query):
+        print(f"\n{'='*80}")
+        print(f"🔍 Requête: {query[:100]}...")
+        print(f"📊 {len(results)} résultats trouvés")
+        print(f"{'='*80}\n")
+        
+        for i, art in enumerate(results, 1):
+            print(f"{i}. [{art['similarity_score']}] {art['title']}")
+            print(f"   Source: {art['source']} | Date: {art['date']}")
+            print(f"   URL: {art['url']}")
+            if art['description']:
+                desc = art['description'][:150].replace('\n', ' ')
+                print(f"   {desc}...")
+            print()
     
-    def get_statistics(self) -> Dict:
-        """Retourne des statistiques sur la base"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        c.execute('SELECT COUNT(*) FROM articles')
-        total = c.fetchone()[0]
-        
-        c.execute('SELECT source, COUNT(*) FROM articles GROUP BY source')
-        by_source = dict(c.fetchall())
-        
-        conn.close()
-        
-        return {
-            'total_articles': total,
-            'indexed_articles': self.index.ntotal,
-            'sources': by_source
+    def _save_results(self, results, filename, query):
+        output = {
+            'query': query,
+            'timestamp': datetime.now().isoformat(),
+            'total_results': len(results),
+            'results': results
         }
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+        
+        print(f"💾 Résultats sauvegardés dans {filename}")
 
 
-# ===== EXEMPLE D'UTILISATION =====
+async def main():
+    from AsyncFetcher import AsyncFetcher
+    
+    fetcher = AsyncFetcher()
+    
+    # batch_size=1000 = charge 1000 articles à la fois (ajustable)
+    engine = ArticleSearchEngine(fetcher, batch_size=1000)
+    
+    await engine.search(
+        query_text="Trump Iran ayatollah Khamenei",
+        top_k=10,
+        min_score=0.65,
+        display=True,
+        save_to="results_trump_iran.json"
+    )
+
 
 if __name__ == "__main__":
-    # Initialisation
-    engine = ArticleClusteringEngine()
-    
-    """
-    # Exemple 1 : Ajout manuel d'articles
-    engine.add_article(
-        title="Intelligence artificielle : Claude 4 dévoilé par Anthropic",
-        content="Anthropic a annoncé aujourd'hui le lancement de Claude 4, sa nouvelle génération de modèles d'IA...",
-        url="https://example.com/article1",
-        source="TechNews"
-    )
-    
-    
-    # Exemple 2 : Scraping de flux RSS (sources d'actualité francophones)
-    rss_feeds = [
-        'https://www.lemonde.fr/rss/une.xml',
-        'https://www.lefigaro.fr/rss/figaro_actualites.xml',
-        'https://www.liberation.fr/arc/outboundfeeds/rss-all/?outputType=xml',
-        'https://www.franceinfo.fr/titres.rss',
-        'https://www.franceinfo.fr/france.rss',
-        'https://www.lemonde.fr/rss/en_continu.xml',
-        'https://www.bfmtv.com/rss/news-24-7',
-        'https://www.service-public.gouv.fr/abonnements/rss/actu-actualites-particuliers.rss',
-        'https://www.france24.com/fr/rss',
-        'https://www.france24.com/fr/france/rss',
-        'https://www.france24.com/fr/europe/rss',
-        'https://www.nouvelobs.com/a-la-une/rss.xml',
-        'https://www.nouvelobs.com/depeche/rss.xml'
-    ]
-    
-    print("Scraping des flux RSS...")
-    new_articles = engine.scrape_rss_feeds()
-    print(f"✓ {new_articles} nouveaux articles ajoutés")
-    """
-
-    
-    # Exemple 3 : Recherche d'articles similaires
-    query ="""
-    Iran : l’ayatollah Ali Khamenei compare Donald Trump aux « tyrans et aux arrogants de ce monde » et affirme qu’il « sera renversé »
-    """
-    
-    print("\nRecherche d'articles similaires...")
-    similar = engine.find_similar_articles(query, top_k=50, similarity_threshold=0.6)
-    
-    print(f"\nTrouvé {len(similar)} articles similaires :\n")
-    for article in similar:
-        print(f"[{article['similarity_score']}] {article['title']}")
-        print(f"  Source: {article['source']} | URL: {article['url']}\n")
-    
-    # Statistiques
-    stats = engine.get_statistics()
-    print(f"\n📊 Statistiques:")
-    print(f"  Total articles: {stats['total_articles']}")
-    print(f"  Articles indexés: {stats['indexed_articles']}")
-    print(f"  Sources: {stats['sources']}")
-    
+    asyncio.run(main())
