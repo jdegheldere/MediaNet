@@ -122,6 +122,14 @@ class AsyncFetcher:
         if self.conn is None:
             self.conn = await aiosqlite.connect(self.config.get('db_path'))
             self.conn.row_factory = aiosqlite.Row
+        else:
+            # On vérifie si la connection est toujours 'ouverte', sinon on la recrée
+            try:
+                await self.conn.execute("SELECT 1")
+            except (aiosqlite.Error, AttributeError):
+                self.conn = await aiosqlite.connect(self.config.get('db_path'))
+                self.conn.row_factory = aiosqlite.Row
+        
         return self.conn
     
     def _load_config(self):
