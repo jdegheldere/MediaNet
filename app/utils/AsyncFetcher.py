@@ -10,6 +10,9 @@ import json
 from io import BytesIO
 from lxml import etree
 from email.utils import parsedate_to_datetime
+import pickle
+import numpy as np
+from sentence_transformers import SentenceTransformer
 """
 TODO :
 [ ] Autres accès a la BDD, en ecriture (ajout manuel d'articles, d'url rss,...)
@@ -75,6 +78,7 @@ class AsyncFetcher:
         self.config = self._load_config()
         self._running = False
         self.logger = self._setup_logging()
+        self.embedding_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
 
     def _setup_logging(self): 
         logs_folder = self.config.get('logs_folder', '')   
@@ -172,6 +176,10 @@ class AsyncFetcher:
         """)
 
         await self.create_indexes(conn)
+
+    def _compute_embedding(self, text):
+        vector = self.embedding_model.encode(text, convert_to_numpy=True).astype('float32')
+        return pickle.dumps(vector)
 
     async def fetch_url(self, url, session):
         #timeSync0 = time.time()
@@ -295,6 +303,7 @@ class AsyncFetcher:
                 continue
             self.logger.debug(f"Saved article data {title}")
             summary = entry.get('summary', entry.get('description', ''))
+            embedding_blob = self._compute_embedding(f"{title} {summary}")
             article_url = entry.get('link', '')
             published = entry.get('published_parsed') or entry.get('updated_parsed')
             if published:
@@ -303,10 +312,10 @@ class AsyncFetcher:
             else:
                 published = datetime.now()
                 published_ts = int(published.timestamp())
-            to_insert.append((id_rss, article_url, title, summary, published_ts))
+            to_insert.append((id_rss, article_url, title, summary, published_ts, embedding_blob))
         self.logger.debug(f"Id RSS : {id_rss} | articles stored : {len(to_insert)} | Skipped duplicates: {len(entries) - len(to_insert)}")
         if to_insert:
-            await conn.executemany("INSERT INTO articles (ID_RSS,Article_URL,Title,Description,Date) VALUES (?,?,?,?,?)",to_insert)
+            await conn.executemany("INSERT INTO articles (ID_RSS,Article_URL,Title,Description,Date, Embedding) VALUES (?,?,?,?,?,?)",to_insert)
         await conn.commit()
         return len(to_insert), len(entries) - len(to_insert)
 
