@@ -417,9 +417,13 @@ class AsyncFetcher:
         self.logger.info(f"Démarrage du fetcher périodique (intervalle {interval} minutes)")
         try:
             while self._running:
+                time0 = time.time()
                 await self.main()
-                self.logger.info(f"prochaine exécution dans {interval} minutes")
-                await asyncio.sleep(interval_seconds)
+                dt = time.time() - time0
+                interval_corrected = interval_seconds - dt
+                self.logger.info(f"L'exécution a pris {dt} secondes.")
+                self.logger.info(f"prochaine exécution dans {interval_corrected/60} minutes")
+                await asyncio.sleep(interval_corrected)
         except (KeyboardInterrupt, asyncio.CancelledError):
             self.logger.warning("Interruption clavier")
             self._running = False #on arrèete l'exécution!
