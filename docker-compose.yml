@@ -10,9 +10,9 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 1024M
         reservations:
-          memory: 256M
+          memory: 512M
     
     env_file:
       - .env
