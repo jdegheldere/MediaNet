@@ -9,37 +9,21 @@ import pickle
 import json
 from datetime import datetime
 from sentence_transformers import SentenceTransformer
+from AsyncFetcher import AsyncFetcher
 
 
 class ArticleSearchEngine:
     
     def __init__(self, fetcher, batch_size=1000):
-        self.fetcher = fetcher
+        self.fetcher = AsyncFetcher()
         self.model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         self.batch_size = batch_size  # Nombre d'articles chargés à la fois
-    
-    def _text_to_vector(self, text):
-        vector = self.model.encode(text, convert_to_numpy=True)
-        return vector.astype('float32')
-    
-    async def _count_articles_with_embedding(self):
-        """Compte le nombre total d'articles avec embedding"""
-        conn = await self.fetcher._get_conn()
-        async with conn.execute(
-            'SELECT COUNT(*) FROM articles WHERE embedding IS NOT NULL'
-        ) as cur:
-            row = await cur.fetchone()
-            return row[0]
-    
+        self._em = self.fetcher.embedding_manager
+
     async def _get_articles_batch(self, offset, limit):
         """Récupère un batch d'articles avec embedding"""
-        conn = await self.fetcher._get_conn()
-        async with conn.execute(
-            'SELECT ID, Title, Article_URL, ID_RSS, Date, Description, embedding FROM articles WHERE embedding IS NOT NULL ORDER BY ID LIMIT ? OFFSET ?',
-            (limit, offset)
-        ) as cur:
-            rows = await cur.fetchall()
-            return [dict(row) for row in rows]
+        return self.fetcher.query_db(attr=["ID", "Title", "Article_URL","ID_RSS", "Date", "Description", "Embedding"], order_by="ID", limit=limit, offset = offset)
+
     
     async def search(self, query_text, top_k=10, min_score=0.6, 
                     exclude_id=None, display=True, save_to=None):
@@ -53,16 +37,7 @@ class ArticleSearchEngine:
         display: afficher les résultats dans le terminal
         save_to: nom du fichier JSON pour sauvegarder (ex: "results.json")
         """
-        query_vector = self._text_to_vector(query_text)
-        
-        total_articles = await self._count_articles_with_embedding()
-        
-        if total_articles == 0:
-            print("⚠️ Aucun article avec embedding trouvé")
-            return []
-        
-        print(f"🔍 Recherche dans {total_articles} articles (par batch de {self.batch_size})...")
-        
+        query_vector = await self._em.compute_embedding_auto(query_text)
         # Stocker seulement les meilleurs scores (top_k * 3 pour avoir de la marge)
         best_scores = []
         max_stored = top_k * 3
@@ -72,7 +47,7 @@ class ArticleSearchEngine:
         
         while offset < total_articles:
             batch = await self._get_articles_batch(offset, self.batch_size)
-            
+            total_articles = len(batch)
             for article in batch:
                 if exclude_id and article['ID'] == exclude_id:
                     continue
@@ -133,37 +108,7 @@ class ArticleSearchEngine:
             self._save_results(results, save_to, query_text)
         
         return results
-    
-    async def search_by_id(self, article_id, top_k=10, min_score=0.6, 
-                          display=True, save_to=None):
-        """
-        Cherche les articles similaires à un article existant
-        
-        article_id: ID de l'article de référence
-        autres params: identiques à search()
-        """
-        articles = await self.fetcher.query_db(
-            conditions={"ID": article_id},
-            limit=1,
-            order_by="ID DESC"
-        )
-        
-        if not articles:
-            print(f"⚠️ Article {article_id} introuvable")
-            return []
-        
-        article = articles[0]
-        query_text = f"{article['Title']} {article['Description']}"
-        
-        return await self.search(
-            query_text, 
-            top_k=top_k, 
-            min_score=min_score,
-            exclude_id=article_id,
-            display=display,
-            save_to=save_to
-        )
-    
+     
     def _display_results(self, results, query):
         print(f"\n{'='*80}")
         print(f"🔍 Requête: {query[:100]}...")

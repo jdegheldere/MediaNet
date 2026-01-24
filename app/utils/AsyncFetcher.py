@@ -14,14 +14,14 @@ import pickle
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from concurrent.futures import ThreadPoolExecutor
-
+import gc
 """
 TODO :
 [ ] Autres accès a la BDD, en ecriture (ajout manuel d'articles, d'url rss,...)
 [ ] gestion mémoire (backup,...)
 
 """
-async def parse_feed_lxml(content):
+async def parse_feed_lxml(content):#MErci Claude!
     """Parse RSS/Atom feed using lxml (much faster than feedparser)"""
     loop = asyncio.get_event_loop()
     
@@ -59,6 +59,145 @@ async def parse_feed_lxml(content):
     
     return {'entries': entries}
 
+class EmbeddingManager: #MErci Claude!
+    """Gestionnaire d'embeddings avec contrôle manuel du cycle de vie"""
+    
+    def __init__(self, model_name="paraphrase-multilingual-MiniLM-L12-v2"):
+        self.model_name = model_name
+        self.embedding_model = None
+        self.logger = logging.getLogger(__name__)
+        self._executor = ThreadPoolExecutor(max_workers=1)
+        self._model_lock = asyncio.Lock()
+        self._is_loaded = False
+        self._ref_count = 0
+        
+    async def __aenter__(self):
+        """Context manager: charge le modèle à l'entrée"""
+        await self.load_model()
+        return self
+        
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Context manager: décharge le modèle à la sortie"""
+        await self.unload_model()
+    
+    def _load_model_sync(self):
+        """Charge le modèle (opération bloquante - dans thread)"""
+        self.logger.info(f"Loading model {self.model_name}...")
+        return SentenceTransformer(self.model_name)
+    
+    async def load_model(self):
+        """
+        Charge le modèle de manière asynchrone
+        Peut être appelé manuellement pour garder le modèle en mémoire
+        """
+        async with self._model_lock:
+            self._ref_count += 1 #on incrémente le nombre d'appels a load_model (race condition)
+            if self._is_loaded:
+                self.logger.debug("Model already loaded, skipping...")
+                return
+            
+            loop = asyncio.get_event_loop()
+            self.embedding_model = await loop.run_in_executor(
+                self._executor, 
+                self._load_model_sync
+            )
+            self._is_loaded = True
+            self.logger.info("Model loaded successfully")
+    
+    async def unload_model(self):
+        """
+        Décharge le modèle et libère la mémoire
+        Peut être appelé manuellement pour libérer la RAM
+        """
+        async with self._model_lock:
+            self._ref_count -= 1
+            if self._ref_count > 0: #un des users a toujours besoin des poids!!! on ne décharge pas!
+                return
+
+            if self._ref_count < 0:#en safe, ça ne devrait jamais arriver mais on sait jamais
+                self._ref_count = 0
+
+            if not self._is_loaded:
+                self.logger.debug("Model not loaded, nothing to unload")
+                return
+            
+            self.logger.info("Unloading model and freeing memory...")
+            del self.embedding_model
+            self.embedding_model = None
+            self._is_loaded = False
+
+
+            
+            # Force le garbage collector à libérer la mémoire
+            gc.collect()
+            self.logger.info("Model unloaded, memory freed")
+    
+    def _compute_embedding_sync(self, text):
+        """Calcule l'embedding (opération bloquante - dans thread)"""
+        if not self._is_loaded or self.embedding_model is None:
+            raise RuntimeError("Model not loaded. Call load_model() first.")
+        vector = self.embedding_model.encode(text, convert_to_numpy=True).astype('float32')
+        return vector
+    
+    def _compute_embeddings_batch_sync(self, texts):
+        """Calcule plusieurs embeddings en batch (opération bloquante)"""
+        if not self._is_loaded or self.embedding_model is None:
+            raise RuntimeError("Model not loaded. Call load_model() first.")
+        vectors = self.embedding_model.encode(texts, convert_to_numpy=True).astype('float32')
+        return vectors
+    
+    async def compute_embedding(self, text):
+        """
+        Calcule l'embedding d'un texte de manière asynchrone
+        Le modèle DOIT être chargé avant (via load_model() ou context manager)
+        """
+        if not self._is_loaded:
+            raise RuntimeError("Model not loaded. Call load_model() first.")
+        
+        loop = asyncio.get_event_loop()
+        vector = await loop.run_in_executor(
+            self._executor,
+            self._compute_embedding_sync,
+            text
+        )
+        return pickle.dumps(vector)
+    
+    async def compute_embeddings_batch(self, texts):
+        """
+        Calcule plusieurs embeddings en batch (plus efficace)
+        Le modèle DOIT être chargé avant
+        """
+        if not self._is_loaded:
+            raise RuntimeError("Model not loaded. Call load_model() first.")
+        
+        loop = asyncio.get_event_loop()
+        vectors = await loop.run_in_executor(
+            self._executor,
+            self._compute_embeddings_batch_sync,
+            texts
+        )
+        return [pickle.dumps(v) for v in vectors]
+    
+    async def compute_embedding_auto(self, text):
+        """Charge si besoin, calcule, décharge si on a chargé"""
+        was_loaded = self.is_loaded
+        if not was_loaded:
+            await self.load_model()
+        try:
+            return await self.compute_embedding(text)
+        finally:
+            if not was_loaded:
+                await self.unload_model()
+    
+    @property
+    def is_loaded(self):
+        """Vérifie si le modèle est chargé"""
+        return self._is_loaded
+    
+    def cleanup(self):
+        """Nettoie les ressources (executor)"""
+        self._executor.shutdown(wait=True)
+
 
 class AsyncFetcher:
     _instance = None
@@ -80,16 +219,7 @@ class AsyncFetcher:
         self.config = self._load_config()
         self._running = False
         self.logger = self._setup_logging()
-        self.embedding_model = None
-
-    async def init_model(self):
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as pool:
-            self.embedding_model = await loop.run_in_executor(pool, self._load_model)
-
-    def _load_model(self):
-        # charger le modele (bloquant!!)
-        return SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+        self.embedding_manager = EmbeddingManager()
 
     def _setup_logging(self): 
         logs_folder = self.config.get('logs_folder', '')   
@@ -182,6 +312,7 @@ class AsyncFetcher:
                 Title TEXT NOT NULL,
                 Description TEXT,
                 Date INTEGER,
+                Embedding BLOB,
                 FOREIGN KEY (ID_RSS) REFERENCES feeds(ID)
             )
         """)
@@ -268,31 +399,6 @@ class AsyncFetcher:
                 return response
             return None
 
-    async def save_article(self, feed_url ,entries, etag, last_modified):
-        #Mise à jour des meta des URL
-        conn = await self._get_conn()
-        await conn.execute("UPDATE feeds SET etag=?, last_modified=? WHERE URL = ?", (etag, last_modified, feed_url))
-        #Enregistrement de tout
-        for entry in entries:
-            title = entry.get('title', 'No title')
-            cur = await conn.execute("SELECT 1 FROM articles WHERE Title=? LIMIT 1", (title,))
-            exists = await cur.fetchone()
-            if exists:
-                self.logger.debug(f"Artcle {title} already exists in database, skipping...")
-                continue
-            self.logger.debug(f"Saved article data {title}")
-            summary = entry.get('summary', entry.get('description', ''))
-            article_url = entry.get('link', '')
-            source = ''
-            #self.logger.info(f"Article courant : RSS feed: {feed_url}, SOURCE : {source}")
-            published = entry.get('published_parsed') or entry.get('updated_parsed')
-            if published:
-                published = datetime(*published[:6])
-            try:
-                await conn.execute("INSERT INTO articles (URL_RSS,Source,Article_URL,Title,Description,Date) VALUES (?,?,?,?,?,?)",(feed_url,source, article_url, title, summary, published))
-            except Exception as e:
-                raise Exception(f"Exception : {e} source : {(feed_url,source, article_url, title, summary, published)}")
-
     async def save_articles_bulk(self, feed_url, entries, etag, last_modified):
         conn = await self._get_conn()
         await conn.execute("UPDATE feeds SET etag=?, last_modified=? WHERE URL = ?", (etag, last_modified, feed_url))
@@ -307,6 +413,7 @@ class AsyncFetcher:
 
         #Péparation du bulk d'articles àinsérer d'un coup
         to_insert = []
+        texts_to_embed = []
         for entry in entries:
             title = entry.get('title', 'No title')
             if title in existing_titles:
@@ -314,7 +421,7 @@ class AsyncFetcher:
                 continue
             self.logger.debug(f"Saved article data {title}")
             summary = entry.get('summary', entry.get('description', ''))
-            embedding_blob = self._compute_embedding(f"{title} {summary}")
+            texts_to_embed.append(f"{title} {summary}")
             article_url = entry.get('link', '')
             published = entry.get('published_parsed') or entry.get('updated_parsed')
             if published:
@@ -323,10 +430,14 @@ class AsyncFetcher:
             else:
                 published = datetime.now()
                 published_ts = int(published.timestamp())
-            to_insert.append((id_rss, article_url, title, summary, published_ts, embedding_blob))
+            to_insert.append((id_rss, article_url, title, summary, published_ts))
+        if not to_insert:
+            return 0, len(entries)
+        embeddings = await self.embedding_manager.compute_embeddings_batch(texts_to_embed)
+        final_data = [(*data, emb) for data , emb in zip(to_insert, embeddings)]
         self.logger.debug(f"Id RSS : {id_rss} | articles stored : {len(to_insert)} | Skipped duplicates: {len(entries) - len(to_insert)}")
         if to_insert:
-            await conn.executemany("INSERT INTO articles (ID_RSS,Article_URL,Title,Description,Date, Embedding) VALUES (?,?,?,?,?,?)",to_insert)
+            await conn.executemany("INSERT INTO articles (ID_RSS,Article_URL,Title,Description,Date, Embedding) VALUES (?,?,?,?,?,?)",final_data)
         await conn.commit()
         return len(to_insert), len(entries) - len(to_insert)
 
@@ -371,10 +482,7 @@ class AsyncFetcher:
         self.logger.info("Indexes created successfully!")
 
     async def main(self):
-        if self.embedding_model is None:
-            self.logger.info("Embedding model loading ...")
-            await self.init_model()
-            self.logger.info("Embedding model fully loaded!")
+        await self.embedding_manager.load_model()
         conn = await self._get_conn()
         await self._init_db(conn)
         cursor = await conn.execute("SELECT DISTINCT URL FROM feeds WHERE LastState = 1") #On récupère tous les URLs qui sont VALIDES (i.e qui ont fonctionné à l'itération n-1)
@@ -389,13 +497,15 @@ class AsyncFetcher:
             await asyncio.sleep(0.5)
         await self.cleanup()
 
-    async def query_db(self, conditions, limit, order_by = "ID DESC"):
+    async def query_db(self, conditions=None, limit=None, order_by = "ID DESC", attr = ["*"], offset=None):
         conn = await self._get_conn()
-        query = "SELECT * FROM articles"
+        allowed_columns = {"ID", "ID_RSS", "Article_URL", "Title", "Description", "Date", "Embedding"}
+        attributs_corriges = [a for a in attr if a in allowed_columns]
+        str_attr_corr = ", ".join(attributs_corriges)
+        query = f"SELECT {str_attr_corr} FROM articles"
         params = []
         #Ajout des conditions WHERE à la requête
         if conditions:
-            allowed_columns = {"ID", "ID_RSS", "Article_URL", "Title", "Description", "Date"}
             where_clauses = []
             for column, value in conditions.items():
                 if column not in allowed_columns:
@@ -412,6 +522,9 @@ class AsyncFetcher:
             self.logger.warning(f"ORDER BY clause not authorized in query_db() {order_by}")
             order_by = "ID_DESC"
         query += f" ORDER BY {order_by}"
+
+        if offset:
+            query += f"LIMIT {offset}"
 
         #Ajout de LIMIT
         if limit:
@@ -449,6 +562,7 @@ class AsyncFetcher:
         if self.session and not self.session.closed:
             await self.session.close()
             self.logger.info("Session HTTP fermée")
+        self.embedding_manager.unload_model()
         if self.conn:
             await self.conn.close()
             self.logger.info("connexion DB fermée")
