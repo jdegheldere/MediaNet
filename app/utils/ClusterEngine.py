@@ -16,7 +16,6 @@ class ArticleSearchEngine:
     
     def __init__(self, fetcher, batch_size=1000):
         self.fetcher = AsyncFetcher()
-        self.model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
         self.batch_size = batch_size  # Nombre d'articles chargés à la fois
         self._em = self.fetcher.embedding_manager
 
